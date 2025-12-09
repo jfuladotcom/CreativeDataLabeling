@@ -1,488 +1,928 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <title>Creative Data Labeling Demo</title>
-    <style>
-        body {
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background: #F0F8FF;
-            margin: 0;
-            padding: 0;
-        }
-        .container {
-            display: grid;
-            grid-template-columns: 1fr 2fr;
-            gap: 2.5rem;
-            padding: 2.5rem 1.5rem;
-            min-height: 100vh;
-        }
-        .panel {
-            background: #fff;
-            border-radius: 16px;
-            box-shadow: 0 2px 16px rgba(65, 105, 225, 0.07);
-            padding: 2rem 1.5rem 1.5rem 1.5rem;
-            display: flex;
-            flex-direction: column;
-            min-height: 300px;
-            border-top: 6px solid #4169E1;
-        }
-        h2 {
-            margin-top: 0;
-            font-size: 1.3rem;
-            color: #1434A4;
-            letter-spacing: 0.5px;
-        }
-        label {
-            color: #4169E1;
-            font-weight: 500;
-        }
-        input[type="text"], select {
-            margin-top: 0.5em;
-            margin-bottom: 1em;
-            padding: 0.5em;
-            width: 90%;
-            border: 1.5px solid #B6D0E2;
-            border-radius: 6px;
-            background: #F0F8FF;
-            font-size: 1em;
-        }
-        button {
-            background: #4169E1;
-            color: #fff;
-            border: none;
-            border-radius: 6px;
-            padding: 0.7em 1.5em;
-            font-size: 1em;
-            font-weight: 600;
-            cursor: pointer;
-            margin-bottom: 1em;
-            transition: background 0.2s;
-        }
-        button:hover {
-            background: #1434A4;
-        }
-        .export-btn {
-            margin-left: auto;
-            margin-bottom: 1em;
-            background: #1434A4;
-        }
-        .success { color: #007bff; font-weight: 500; }
-        .error { color: #dc3545; font-weight: 500; }
-        .labelled {
-            font-weight: bold;
-            color: #000000;
-            border-radius: 4px;
-            padding: 0.2em 0.6em;
-            background: #bde2b6;
-            margin-left: 0.5em;
-        }
-        .labelled.no {
-            color: #000000;
-            background: #ffaeae;
-        }
-        ul {
-            padding-left: 0;
-            list-style: none;
-        }
-        .result-row {
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75em;
-            padding: 0.5em 0.5em 0.5em 0;
-            border-bottom: 1px solid #E6F0FA;
-        }
-        .result-row:last-child {
-            border-bottom: none;
-        }
-        .row-num {
-            display: inline-block;
-            min-width: 2em;
-            background: #ADD8E6;
-            color: #1434A4;
-            font-weight: bold;
-            border-radius: 4px;
-            padding: 0.2em 0.5em;
-            text-align: center;
-            margin-right: 0.5em;
-        }
-        .raw-response {
-            background: #F0F8FF;
-            border-radius: 8px;
-            padding: 0.7em;
-            margin-top: 1em;
-            font-size: 0.95em;
-            color: #1434A4;
-            white-space: pre-wrap;
-            border: 1px solid #B6D0E2;
-        }
-        /* Drag and drop styles */
-        #drop-area {
-            border: 2.5px dashed #4169E1;
-            border-radius: 8px;
-            background: #E6F0FA;
-            color: #1434A4;
-            padding: 2em 1em;
-            text-align: center;
-            cursor: pointer;
-            margin-bottom: 1em;
-            transition: background 0.2s, border-color 0.2s;
-        }
-        #drop-area.highlight {
-            background: #B6D0E2;
-            border-color: #1434A4;
-        }
-        #file-label {
-            cursor: pointer;
-            display: block;
-            font-size: 1.1em;
-            color: #1434A4;
-        }
-        #file-input {
-            display: none;
-        }
-        /* Toggle Switch */
-        .toggle-container {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            margin-bottom: 0.75em;
-        }
-        .switch {
-            position: relative;
-            display: inline-block;
-            width: 48px;
-            height: 26px;
-            margin-left: 0.5em;
-            vertical-align: middle;
-        }
-        .switch input { opacity: 0; width: 0; height: 0; }
-        .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background-color: #B6D0E2;
-            transition: .4s;
-            border-radius: 26px;
-        }
-        .slider:before {
-            position: absolute;
-            content: "";
-            height: 20px; width: 20px;
-            left: 3px; bottom: 3px;
-            background-color: #fff;
-            transition: .4s;
-            border-radius: 50%;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.08);
-        }
-        input:checked + .slider {
-            background-color: #4169E1;
-        }
-        input:checked + .slider:before {
-            transform: translateX(22px);
-        }
-        .toggle-label {
-            color: #4169E1;
-            font-weight: 500;
-            margin-right: 0.5em;
-            font-size: 1em;
-        }
-        /* Loader styles */
-        .loader-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            margin-bottom: 1em;
-        }
-        .loader {
-            border: 6px solid #B6D0E2;
-            border-top: 6px solid #4169E1;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-        .toggle-container {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-            margin-bottom: 0.75em;  
-            gap: 1em;
-        }
-        .export-btn {
-            background: #1434A4;
-            margin-left: 1.5em;
-            margin-bottom: 0;
-        }
-        @media (max-width: 900px) {
-            .toggle-container {
-                flex-wrap: wrap;
-                justify-content: flex-start;
-                gap: 0.75em;
-            }
-            .export-btn { margin-left: 0.75em; margin-top: 0.5em;}
-        }
+  <meta charset="UTF-8" />
+  <title>Creative Data Labeling</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 0;
+      overflow-x: hidden;
+    }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg);}
-            100% { transform: rotate(360deg);}
-        }
-        @media (max-width: 900px) {
-            .container {
-                grid-template-columns: 1fr;
-                gap: 1.5rem;
-                padding: 1rem;
-            }
-            .toggle-container { justify-content: flex-start; }
-        }
-    </style>
+    .workspace {
+      display: grid;
+      grid-template-columns: 20% 80%;
+      min-height: 100vh;
+      transition: grid-template-columns 0.3s ease;
+    }
+
+    .workspace.collapsed {
+      grid-template-columns: 60px 1fr;
+    }
+
+    #left-panel {
+      background: var(--left);
+      padding-top: 5rem;
+      border-right: 1px solid var(--border);
+      padding: 1rem;
+      transition: width 0.3s ease;
+      overflow-y: auto;
+      padding-top: 2rem;
+    }
+
+    #right-panel {
+      background: var(--right);
+      padding: 2rem;
+      overflow-y: auto;
+    }
+
+    #upload-screen {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .panel {
+      background: transparent;
+      margin-bottom: 1rem;
+      padding: 8px 15px;
+      border: 1px var(--border) solid;
+      border-radius: 15px;
+    }
+
+    a {
+      color: #a0a0ff;
+      text-decoration: none;
+    }
+
+    a:hover {
+      color: #fff;
+    }
+
+    h2 {
+      margin-top: 0;
+      font-size: 1.2rem;
+      color: #a0a0ff;
+    }
+
+    label {
+      color: #b1b1ff;
+      font-weight: 500;
+      display: block;
+    }
+
+    input[type="text"],
+    select {
+      width: 90%;
+      margin: 0.3em 0 1em 0;
+      padding: 0.5em;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #303040;
+      font-size: 1em;
+      color: #fff;
+    }
+
+    #export-btn {
+      background: #4d4cac !important;
+    }
+
+    #export-btn:hover {
+      background: #252535 !important;
+    }
+
+    button {
+      color: #fff;
+      border: none;
+      font-size: 1em;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+      background: #1e1e2e;
+      padding: 10px 15px !important;
+      border-radius: 5px;
+    }
+
+    button:hover {
+      background: #353562;
+    }
+
+    #label-btn {
+      border-radius: 5px;
+      padding: 5px 8px;
+    }
+
+    .accordion-section details {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 0.6em;
+      overflow: hidden;
+    }
+
+    .accordion-section summary {
+      cursor: pointer;
+      padding: 0.7em 1em;
+      font-weight: 600;
+      color: #a0a0ff;
+      background: #303040;
+      border-bottom: 1px var(--border) solid;
+    }
+
+    .accordion-section .content {
+      padding: 1em;
+    }
+
+    #drop-area {
+      border: 2.5px dashed #9698d6;
+      border-radius: 8px;
+      padding: 2em 1em;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      margin: 1em;
+      cursor: pointer;
+    }
+
+    #file-input {
+      display: none;
+    }
+
+    #toggle-sidebar {
+      position: absolute;
+      top: 0px;
+      left: 6px;
+      border: 1px #cccccc solid;
+      background-color: #ffffff;
+      border-radius: 5px;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      font-size: 1.3rem;
+      z-index: 1000;
+      display: none;
+    }
+
+    .result-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75em;
+      border-bottom: 1px solid #4d4cac;
+      padding: 0.5em 0;
+    }
+
+    .labelled {
+      padding: 0.2em 0.6em;
+      border-radius: 4px;
+      color: #000;
+      background: #bde2b6;
+      font-weight: 600;
+    }
+
+    .labelled.no {
+      background: #ffaeae;
+    }
+
+    .raw-response {
+      background: #252535;
+      border: 1px solid var(--border);
+      padding: 0.7em;
+      border-radius: 8px;
+      margin-top: 1em;
+      white-space: pre-wrap;
+      font-family: monospace, monospace;
+    }
+
+    .toggle-container {
+      display: grid;
+      grid-template-columns: 1fr 2fr auto;
+      gap: 2rem;
+      margin-top: 0.5em;
+      margin-bottom: 1em;
+      padding: 0 1.5em;
+      align-items: end;
+      border-bottom: 1px var(--border) solid;
+      padding-bottom: 17px;
+    }
+
+    .toggle-left {
+      display: flex;
+      align-items: center;
+      gap: 1em;
+      height: 100%;
+      padding-bottom: 5px;
+    }
+
+    .toggle-right {
+      display: flex;
+      flex-direction: column;
+    }
+
+    #custom-label-input {
+      display: none;
+    }
+
+    .toggle-right-right {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 48px;
+      height: 26px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #303040;
+      transition: .4s;
+      border-radius: 26px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 20px;
+      width: 20px;
+      left: 3px;
+      bottom: 3px;
+      background-color: #fff;
+      transition: .4s;
+      border-radius: 50%;
+      box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+    }
+
+    input:checked+.slider {
+      background-color: #4d4cac;
+    }
+
+    input:checked+.slider:before {
+      transform: translateX(22px);
+    }
+
+    .loader-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      margin-bottom: 1em;
+    }
+
+    .loader {
+      border: 6px solid #B6D0E2;
+      border-top: 6px solid #4d4cac;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 0 auto;
+    }
+
+    @keyframes spin {
+      0% {
+        transform: rotate(0deg);
+      }
+
+      100% {
+        transform: rotate(360deg);
+      }
+    }
+
+    @media (max-width: 900px) {
+      .workspace {
+        grid-template-columns: 1fr;
+      }
+
+      #toggle-sidebar {
+        display: none;
+      }
+    }
+
+    :root {
+      --bg: #1e1e2e;
+      --left: #252535;
+      --right: #1e1e2e;
+      --text: #e0e0e0;
+      --border: #444455;
+      --accent: #4d4cac;
+      --hover: #1434A4;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 20% 80%;
+      min-height: 100vh;
+      transition: grid-template-columns 0.25s ease;
+    }
+
+    .layout.left-collapsed {
+      grid-template-columns: 63px 1fr;
+    }
+
+    .layout.left-collapsed .panel-content {
+      display: none;
+    }
+
+    .left-panel {
+      background: var(--left);
+      border-right: 1px solid var(--border);
+      padding: 1rem;
+      overflow: hidden;
+      position: relative;
+      background-color: var(--left);
+    }
+
+    .toggle-btn {
+      position: absolute;
+      top: 7px;
+      left: 7px;
+      height: 40px;
+      border: 1px solid #222;
+      border-radius: 6px;
+      background: #4d4cac;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      line-height: 1;
+      color: #333;
+    }
+
+    .toggle-btn:hover {
+      background-color: #353562;
+    }
+
+    .toggle-btn:focus-visible {
+      outline: 2px solid #4d90fe;
+      outline-offset: 2px;
+    }
+
+    .toggle-icon {
+      display: inline-block;
+      width: 16px;
+      height: 2px;
+      background: #efefef;
+      position: relative;
+    }
+
+    .toggle-icon::before,
+    .toggle-icon::after {
+      content: "";
+      position: absolute;
+      left: 0;
+      width: 16px;
+      height: 2px;
+      background: #efefef;
+    }
+
+    .toggle-icon::before {
+      top: -5px;
+    }
+
+    .toggle-icon::after {
+      top: 5px;
+    }
+
+    .panel-content {
+      padding-top: 3.5rem;
+      padding-left: 1rem;
+    }
+
+    .right-panel {
+      background: var(--right);
+
+      overflow-y: auto;
+    }
+
+    .right-header {
+      position: sticky;
+      top: 0;
+      background: var(--right);
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-weight: 600;
+      color: var(--text);
+      z-index: 1;
+    }
+
+    .placeholder {
+      padding: 1rem;
+      color: var(--text);
+    }
+
+    /* New CSS for 3-Column Header */
+    .labeling-header {
+      display: grid;
+      grid-template-columns: 1fr 2fr auto;
+      gap: 1rem;
+      align-items: end;
+      padding: 18px;
+      margin-bottom: 1rem;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      background: #454584;
+      z-index: 10;
+    }
+
+    .header-col {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header-col label {
+      margin-bottom: 0.3rem;
+    }
+
+    .header-col input,
+    .header-col select {
+      width: 100%;
+      margin: 0;
+    }
+
+    .header-col button {
+      margin: 0;
+      height: 38px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #drop-text {
+      color: #bcbeff;
+      cursor: pointer;
+    }
+
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+
+      .layout.left-collapsed {
+        grid-template-columns: 1fr;
+      }
+
+      .left-panel {
+        border-right: none;
+        height: auto;
+      }
+
+      .toggle-btn {
+        left: 8px;
+        top: 8px;
+      }
+
+      .labeling-header {
+        grid-template-columns: 1fr;
+        position: static;
+      }
+    }
+
+    .logo-holder {
+      text-align: center;
+      position: relative;
+      margin: -100px auto 10px auto;
+      max-width: 500px;
+      animation: logo-pop-in 0.6s ease-out forwards;
+      animation-delay: .5s;
+      opacity: 0;
+    }
+
+    .logo-holder>img {
+      width: 100%;
+    }
+
+    .home-text {
+      text-align: left;
+      margin: 20px auto;
+      max-width: 500px;
+      position: relative;
+    }
+
+    /* Keyframes for pop-in */
+    @keyframes logo-pop-in {
+      0% {
+        opacity: 0;
+        transform: scale(0.3);
+      }
+
+      60% {
+        opacity: 1;
+        transform: scale(1.05);
+        /* slight overshoot */
+      }
+
+      100% {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+  </style>
 </head>
+
 <body>
-    <div class="container">
-        <!-- Left Column: Upload and Details -->
-        <div class="panel" id="upload-panel">
-            <h2>1. Upload Data</h2>
-            <form id="upload-form" enctype="multipart/form-data" autocomplete="off">
-                <div id="drop-area">
-                    <input type="file" name="file" id="file-input" accept=".csv" hidden>
-                    <label for="file-input" id="file-label">
-                        <span id="drop-text">
-                            <strong>Click to select a CSV</strong> or <strong>drag & drop</strong> here
-                        </span>
-                    </label>
-                </div>
-            </form>
-            <div id="upload-status"></div>
-            <div id="data-preview"></div>
+  <!-- Initial Upload Screen -->
+  <div id="upload-screen">
+    <div class="logo-holder"><img src="{{ url_for('static', filename='images/logo.png') }}"> </div>
+    <div class="home-text">CreativeDataLabeling is a web application that enables users to perform creative data
+      labeling using
+      Google
+      Gemini AI. The app allows users to upload CSV files, select specific columns, and generate labels for their data
+      based on custom prompts, leveraging the power of Gemini for intelligent and automated labeling. It is built with
+      Flask and designed to streamline the process of preparing labeled datasets for machine learning tasks.</div>
+    <div class="panel" style="max-width: 500px; width: 90vw;">
+      <form id="upload-form" enctype="multipart/form-data" autocomplete="off">
+        <div id="drop-area">
+          <input type="file" id="file-input" accept=".csv" />
+          <label for="file-input" id="file-label">
+            <span id="drop-text">
+              <strong>Click to select a CSV</strong> or <strong>drag & drop</strong> here
+            </span>
+          </label>
         </div>
-        <!-- Center Column: Labeling and Results -->
-        <div class="panel" id="label-panel">
-            <h2>2. Label Data</h2>
-            <div id="labeling-section" style="display:none;">
-                <label for="column-select">Select Column:</label>
-                <select id="column-select"></select>
-                <p></p>
-                <label for="label-prompt">Labeling Rule:</label>
-                <input type="text" id="label-prompt" placeholder="e.g. Label reviews that mention waiting in line">
-                <button id="label-btn">Apply Labeling Function</button>
-                <hr>
-               <div class="toggle-container">
-                    <span class="toggle-label">Show only labeled</span>
-                    <label class="switch">
-                        <input type="checkbox" id="toggle-labeled">
-                        <span class="slider"></span>
-                    </label>
-                    <button id="export-btn" class="export-btn" style="display:none; margin-left: 1.5em;">Export Labeled as CSV</button>
-                </div>
-
-                <button id="export-btn" class="export-btn" style="display:none;">Export Labeled as CSV</button>
-                <div id="loader" class="loader-container" style="display:none;">
-                    <div class="loader"></div>
-                </div>
-                <div id="label-results"></div>
-            </div>
-        </div>
+      </form>
+      <div id="upload-status"></div>
     </div>
-    <script>
-        let df_json = null;
-        let lastLabelingExamples = [];
-        let lastRawResponse = "";
-        let lastColumn = "";
-        let lastDataColumns = [];
-        let lastDataRows = [];
+    <div><a href="https://github.com/jfuladotcom/CreativeDataLabeling" target="_blank">View on GitHub</a></div>
+  </div>
 
-        // Drag-and-drop logic for file upload
-        const dropArea = document.getElementById('drop-area');
-        const fileInput = document.getElementById('file-input');
-        const fileLabel = document.getElementById('file-label');
 
-        ['dragenter', 'dragover'].forEach(eventName => {
-            dropArea.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropArea.classList.add('highlight');
-            }, false);
-        });
-        ['dragleave', 'drop'].forEach(eventName => {
-            dropArea.addEventListener(eventName, (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                dropArea.classList.remove('highlight');
-            }, false);
-        });
-        dropArea.addEventListener('drop', (e) => {
-            const files = e.dataTransfer.files;
-            if (files.length) {
-                fileInput.files = files;
-                document.getElementById('drop-text').innerHTML = `<strong>${files[0].name}</strong> selected`;
-                autoUploadFile(files[0]);
-            }
-        }, false);
+  <div class="workspace layout" id="workspace" style="display:none;"
+    aria-label="Two-column layout with collapsible left panel">
+    <aside id="leftPanel" class="left-panel" aria-label="Left panel">
+      <button id="toggleLeft" class="toggle-btn" aria-label="Toggle left panel" title="Toggle left panel">
+        <!-- Simple icon: the button visually indicates collapse/expand via CSS transform -->
+        <span class="toggle-icon" aria-hidden="true"></span>
+      </button>
 
-        fileInput.addEventListener('change', (e) => {
-            if (fileInput.files.length) {
-                document.getElementById('drop-text').innerHTML = `<strong>${fileInput.files[0].name}</strong> selected`;
-                autoUploadFile(fileInput.files[0]);
-            } else {
-                document.getElementById('drop-text').innerHTML = `<strong>Click to select a CSV</strong> or <strong>drag & drop</strong> here`;
-            }
-        });
+      <div class="panel-content">
+        <summary>
+          <h4>Uploaded Columns</h4>
+        </summary>
+        <div class="content">
+          <div id="upload-panel" class="panel"
+            style="box-shadow:none; border-top:none; padding:0; border: 0 !important;">
+            <div id="data-preview"></div>
+          </div>
+        </div>
 
-        dropArea.addEventListener('click', () => {
-            fileInput.click();
-        });
+        <!-- Gemini Raw Response Section -->
+        <div id="raw-response-section" style="display:none; margin-top: 1rem;">
+          <summary>
+            <h4>Gemini Raw Response</h4>
+          </summary>
+          <div class="content">
+            <div id="raw-response-content" class="raw-response"
+              style="max-height: 300px; overflow-y: auto; font-size: 0.9em;"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
 
-        async function autoUploadFile(file) {
-            document.getElementById('upload-status').innerHTML = '';
-            document.getElementById('data-preview').innerHTML = '';
-            const formData = new FormData();
-            formData.append('file', file);
+    <section id="rightPanel" class="right-panel" aria-label="Right panel with header and content">
+      <div id="labeling-section" style="display:none;">
+        <div class="labeling-header">
+          <div class="header-col">
+            <label for="column-select"></label>
+            <select id="column-select"></select>
+          </div>
+          <div class="header-col">
+            <label for="label-prompt"></label>
+            <input type="text" id="label-prompt" placeholder="Enter what you would like to label.">
+          </div>
+          <div class="header-col">
+            <button id="label-btn">Search & Label</button>
+          </div>
+        </div>
 
-            try {
-                const resp = await fetch('/upload-csv', { method: 'POST', body: formData });
-                const text = await resp.text();
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch (err) {
-                    console.error("Non-JSON response:", text);
-                    document.getElementById('upload-status').innerHTML = '<span class="error">Server error: Non-JSON response received.</span>';
-                    return;
-                }
-                if (data.error) {
-                    document.getElementById('upload-status').innerHTML = '<span class="error">' + data.error + '</span>';
-                    return;
-                }
-                df_json = data.df_json;
-                document.getElementById('upload-status').innerHTML = '';
-                document.getElementById('data-preview').innerHTML =
-                  '<b>Columns:</b><ol>' +
-                  data.columns.map(col => `<li>${col}</li>`).join('') +
-                  '</ol><b>Rows:</b> ' + data.row_count;
+        <div class="toggle-container">
+          <div class="toggle-left">
+            <span class="toggle-label">Show only labeled</span>
+            <label class="switch">
+              <input type="checkbox" id="toggle-labeled">
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="toggle-right">
+            <input type="text" id="custom-label-input" placeholder="Enter custom label" style="width: 100%; margin: 0;">
+          </div>
+          <div class="toggle-right-right">
+            <button id="export-btn" class="export-btn" style="display:none;">Export Labeled as CSV</button>
+          </div>
+        </div>
 
-                const colSel = document.getElementById('column-select');
-                colSel.innerHTML = '';
-                data.columns.forEach(col => {
-                    const opt = document.createElement('option');
-                    opt.value = col; opt.text = col;
-                    colSel.appendChild(opt);
-                });
-                document.getElementById('labeling-section').style.display = 'block';
 
-                // Save columns and rows for export
-                lastDataColumns = data.columns;
-                // Parse the JSON to get the rows
-                let df = JSON.parse(df_json);
-                lastDataRows = df.data;
-            } catch (err) {
-                document.getElementById('upload-status').innerHTML = '<span class="error">Upload failed: ' + err + '</span>';
-            }
+        <div id="loader" class="loader-container" style="display:none;">
+          <div class="loader"></div>
+        </div>
+
+        <div class="placeholder">
+
+          <div id="label-results"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Simple toggle logic to collapse/expand the left panel
+    (function () {
+      const layout = document.querySelector('.layout');
+      const toggleBtn = document.getElementById('toggleLeft');
+      let collapsed = false;
+
+      // Update visual state
+      function update() {
+        if (collapsed) {
+          layout.classList.add('left-collapsed');
+          // Optional: rotate or change the icon to indicate "open" state on second click
+          toggleBtn.title = "Open left panel";
+        } else {
+          layout.classList.remove('left-collapsed');
+          toggleBtn.title = "Collapse left panel";
+        }
+        // For accessibility, reflect state
+        toggleBtn.setAttribute('aria-expanded', String(!collapsed));
+      }
+
+      toggleBtn.addEventListener('click', function () {
+        collapsed = !collapsed;
+        update();
+      });
+
+      // Initialize state
+      update();
+    })();
+
+    // Global state variables
+    let df_json = null;
+    let lastLabelingExamples = [];
+    let lastRawResponse = "";
+    let lastColumn = "";
+    let lastDataColumns = [];
+    let lastDataRows = [];
+
+    // DOM references
+    const dropArea = document.getElementById("drop-area");
+    const fileInput = document.getElementById("file-input");
+    const fileLabel = document.getElementById("file-label");
+    const workspace = document.getElementById("workspace");
+    const uploadScreen = document.getElementById("upload-screen");
+
+    // Drag & drop event handlers
+    ["dragenter", "dragover"].forEach((eventName) => {
+      dropArea.addEventListener(
+        eventName,
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropArea.classList.add("highlight");
+        },
+        false
+      );
+    });
+    ["dragleave", "drop"].forEach((eventName) => {
+      dropArea.addEventListener(
+        eventName,
+        (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          dropArea.classList.remove("highlight");
+        },
+        false
+      );
+    });
+
+    dropArea.addEventListener("drop", (e) => {
+      const files = e.dataTransfer.files;
+      if (files.length) {
+        fileInput.files = files;
+        document.getElementById("drop-text").innerHTML = `<strong>${files[0].name}</strong> selected`;
+        autoUploadFile(files[0]);
+      }
+    });
+
+    dropArea.addEventListener("click", () => fileInput.click());
+
+    fileInput.addEventListener("change", (e) => {
+      if (fileInput.files.length) {
+        document.getElementById("drop-text").innerHTML = `<strong>${fileInput.files[0].name}</strong> selected`;
+        autoUploadFile(fileInput.files[0]);
+      } else {
+        document.getElementById("drop-text").innerHTML =
+          `<strong>Click to select a CSV</strong> or <strong>drag & drop</strong> here`;
+      }
+    });
+
+    // Auto-upload file and update UI & state
+    async function autoUploadFile(file) {
+      document.getElementById("upload-status").innerHTML = "";
+      document.getElementById("data-preview").innerHTML = "";
+
+      const formData = new FormData();
+      formData.append("file", file);
+
+      try {
+        const resp = await fetch("/upload-csv", { method: "POST", body: formData });
+        const text = await resp.text();
+
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          console.error("Non-JSON response:", text);
+          document.getElementById("upload-status").innerHTML = `<span class="error">Server error: Non-JSON response received.</span>`;
+          return;
         }
 
-        document.getElementById('label-btn').onclick = async function() {
-            document.getElementById('label-results').innerHTML = '';
-            document.getElementById('loader').style.display = 'flex';
-            document.getElementById('export-btn').style.display = 'none';
-            const prompt = document.getElementById('label-prompt').value;
-            const column = document.getElementById('column-select').value;
-            lastColumn = column;
-            if (!prompt) {
-                document.getElementById('loader').style.display = 'none';
-                document.getElementById('label-results').innerHTML = '<span class="error">Please enter a labeling rule.</span>';
-                return;
-            }
-            if (!df_json) {
-                document.getElementById('loader').style.display = 'none';
-                document.getElementById('label-results').innerHTML = '<span class="error">No data loaded.</span>';
-                return;
-            }
-            try {
-                const resp = await fetch('/label', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({prompt, column, df_json})
-                });
-                const text = await resp.text();
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch (err) {
-                    document.getElementById('loader').style.display = 'none';
-                    console.error("Non-JSON response:", text);
-                    document.getElementById('label-results').innerHTML = '<span class="error">Server error: Non-JSON response received.</span>';
-                    return;
-                }
-                if (data.error) {
-                    document.getElementById('loader').style.display = 'none';
-                    document.getElementById('label-results').innerHTML = '<span class="error">' + data.error + '</span>';
-                    return;
-                }
-                lastLabelingExamples = data.examples; // Save for filtering
-                lastRawResponse = data.raw_response;
-                renderLabelResults();
-                document.getElementById('export-btn').style.display = 'block';
-            } catch (err) {
-                document.getElementById('label-results').innerHTML = '<span class="error">Labeling failed: ' + err + '</span>';
-            } finally {
-                document.getElementById('loader').style.display = 'none';
-            }
-        };
-
-        function renderLabelResults() {
-            const showOnlyLabeled = document.getElementById('toggle-labeled').checked;
-            let html = '<b>Labeling Results:</b><ul>';
-            lastLabelingExamples.forEach(([ex, label], idx) => {
-                if (!showOnlyLabeled || (showOnlyLabeled && label)) {
-                    html += `<li class="result-row"><span class="row-num">${idx + 1}</span> ${ex} <span class="labelled${label ? '' : ' no'}">${label ? 'LABEL' : 'NO LABEL'}</span></li>`;
-                }
-            });
-            html += '</ul>';
-            html += `<details><summary style="color:#4169E1;cursor:pointer;">Gemini Raw Response</summary><div class="raw-response">${lastRawResponse}</div></details>`;
-            document.getElementById('label-results').innerHTML = html;
+        if (data.error) {
+          document.getElementById("upload-status").innerHTML = `<span class="error">${data.error}</span>`;
+          return;
         }
 
-        document.getElementById('toggle-labeled').addEventListener('change', renderLabelResults);
+        df_json = data.df_json;
+        document.getElementById("upload-status").innerHTML = "";
+        document.getElementById("data-preview").innerHTML =
+          "<ol>" + data.columns.map((col) => `<li>${col}</li>`).join("") + "</ol>" + "<b>Rows:</b> " + data.row_count;
 
-        // Export labeled as CSV
-        document.getElementById('export-btn').onclick = function() {
-            if (!lastLabelingExamples.length || !lastDataColumns.length || !lastDataRows.length) {
-                alert("Nothing to export!");
-                return;
-            }
-            // Only export those in lastLabelingExamples that are labeled
-            const labeledIndices = lastLabelingExamples
-                .map(([_ex, label], idx) => label ? idx : -1)
-                .filter(idx => idx !== -1);
+        const colSel = document.getElementById("column-select");
+        colSel.innerHTML = "";
 
-            if (labeledIndices.length === 0) {
-                alert("No labeled rows to export.");
-                return;
-            }
+        // Add "All Columns" option
+        const allOpt = document.createElement("option");
+        allOpt.value = "All Columns";
+        allOpt.text = "All Columns";
+        colSel.appendChild(allOpt);
 
-            // Build CSV content
-            let csv = lastDataColumns.join(',') + ',LABEL\n';
-            labeledIndices.forEach(idx => {
-                // Add row data (escape quotes)
-                let row = lastDataRows[idx].map(cell =>
-                    cell == null ? '' : `"${String(cell).replace(/"/g, '""')}"`
-                ).join(',');
-                csv += row + ',LABEL\n';
-            });
+        data.columns.forEach((col) => {
+          const opt = document.createElement("option");
+          opt.value = col;
+          opt.text = col;
+          colSel.appendChild(opt);
+        });
+        document.getElementById("labeling-section").style.display = "block";
 
-            // Download
-            const blob = new Blob([csv], {type: 'text/csv'});
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'labeled_export.csv';
-            document.body.appendChild(a);
-            a.click();
-            setTimeout(() => {
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-            }, 0);
-        };
-    </script>
+        // Save columns and rows for export
+        lastDataColumns = data.columns;
+        // Parse the JSON to get the rows
+        let df = JSON.parse(df_json);
+        lastDataRows = df.data;
+
+        // Show workspace & hide upload screen
+        uploadScreen.style.display = "none";
+        workspace.style.display = "grid";
+      } catch (err) {
+        document.getElementById("upload-status").innerHTML = `<span class="error">Upload failed: ${err}</span>`;
+      }
+    }
+
+    // Labeling function button click handler
+    document.getElementById("label-btn").onclick = async function () {
+      document.getElementById("label-results").innerHTML = "";
+      document.getElementById("loader").style.display = "flex";
+      document.getElementById("export-btn").style.display = "none";
+
+      const prompt = document.getElementById("label-prompt").value;
+      const column = document.getElementById("column-select").value;
+      lastColumn = column;
+
+      if (!prompt) {
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("label-results").innerHTML = `<span class="error">Please enter a labeling rule.</span>`;
+        return;
+      }
+      if (!df_json) {
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("label-results").innerHTML = `<span class="error">No data loaded.</span>`;
+        return;
+      }
+
+      try {
+        const resp = await fetch("/label", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt, column, df_json }),
+        });
+
+        const text = await resp.text();
+
+        let data;
+        try {
+          data = JSON.parse(text);
+        } catch (err) {
+          document.getElementById("loader").style.display = "none";
+          console.error("Non-JSON response:", text);
+          document.getElementById("label-results").innerHTML = `<span class="error">Server error: Non-JSON response received.</span>`;
+          return;
+        }
+        if (data.error) {
+          document.getElementById("loader").style.display = "none";
+          document.getElementById("label-results").innerHTML = `<span class="error">${data.error}</span>`;
+          return;
+        }
+
+        lastLabelingExamples = data.examples; // Save for filtering
+        lastRawResponse = data.raw_response;
+        renderLabelResults();
+        document.getElementById("export-btn").style.display = "block";
+        document.getElementById("custom-label-input").style.display = "block";
+      } catch (err) {
+        document.getElementById("label-results").innerHTML = `<span class="error">Labeling failed: ${err}</span>`;
+      } finally {
+        document.getElementById("loader").style.display = "none";
+      }
+    };
+
+    // Render labeling results with filter
+    function renderLabelResults() {
+      const showOnlyLabeled = document.getElementById("toggle-labeled").checked;
+      let html = "<b>Labeling Results:</b><ul>";
+      lastLabelingExamples.forEach(([ex, label], idx) => {
+        if (!showOnlyLabeled || (showOnlyLabeled && label)) {
+          html += `<li class="result-row"><span class="row-num">${idx + 1}</span> ${ex} <span class="labelled${label ? "" : " no"}">${label ? "LABEL" : "NO LABEL"
+            }</span></li>`;
+        }
+      });
+      html += "</ul>";
+      // Removed raw response from here
+      document.getElementById("label-results").innerHTML = html;
+
+      // Update Left Panel Raw Response
+      if (lastRawResponse) {
+        document.getElementById("raw-response-content").innerText = lastRawResponse;
+        document.getElementById("raw-response-section").style.display = "none";
+      }
+    }
+
+    // Listen for toggle-labeled checkbox change
+    document.getElementById("toggle-labeled").addEventListener("change", renderLabelResults);
+
+    // Export labeled as CSV
+    document.getElementById("export-btn").onclick = function () {
+      if (!lastLabelingExamples.length || !lastDataColumns.length || !lastDataRows.length) {
+        alert("Nothing to export!");
+        return;
+      }
+      // Only export those labeled
+      const labeledIndices = lastLabelingExamples
+        .map(([_ex, label], idx) => (label ? idx : -1))
+        .filter((idx) => idx !== -1);
+      if (labeledIndices.length === 0) {
+        alert("No labeled rows to export.");
+        return;
+      }
+
+      // Get custom label or default
+      const customLabel = document.getElementById("custom-label-input").value.trim() || "LABEL";
+
+      // Build CSV content
+      let csv = lastDataColumns.join(",") + "," + customLabel + "\n";
+      labeledIndices.forEach((idx) => {
+        let row = lastDataRows[idx]
+          .map((cell) => (cell == null ? "" : `"${String(cell).replace(/"/g, '""')}"`))
+          .join(",");
+        csv += row + "," + customLabel + "\n";
+      });
+
+      // Download CSV
+      const blob = new Blob([csv], { type: "text/csv" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "labeled_export.csv";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 0);
+    };
+
+
+  </script>
 </body>
+
 </html>
