@@ -63,31 +63,50 @@ def label():
             return jsonify({'error': 'Missing data, column, or prompt.'}), 400
 
         df = pd.read_json(df_json, orient='split')
-        sample = df[column].dropna().astype(str).head(10).tolist()
-        sample_text = "\n".join(f"- {row}" for row in sample)
+        # Process all rows
+        if column == "All Columns":
+            # Concatenate all columns for each row
+            all_data = df.astype(str).agg(' '.join, axis=1).tolist()
+        else:
+            all_data = df[column].dropna().astype(str).tolist()
+        
+        batch_size = 50
+        all_results = []
+        full_response_log = []
 
-        gemini_prompt = (
-            f"You are an expert data annotator. Given the labeling rule:\n"
-            f"'{prompt}'\n"
-            f"Apply this rule to each example below. For each, reply with either 'LABEL' or 'NO LABEL'.\n"
-            f"Examples:\n{sample_text}"
-        )
+        for i in range(0, len(all_data), batch_size):
+            batch = all_data[i:i + batch_size]
+            batch_text = "\n".join(f"- {row}" for row in batch)
 
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=gemini_prompt
-        )
-        answer = response.text.strip() if response.text else ""
-        results = []
-        for line in answer.splitlines():
-            label = 1 if 'LABEL' in line.upper() and 'NO LABEL' not in line.upper() else 0
-            results.append(label)
-        results = (results + [0]*len(sample))[:len(sample)]
-        labeled = list(zip(sample, results))
+            gemini_prompt = (
+                f"You are an expert data annotator. Given the labeling rule:\n"
+                f"'{prompt}'\n"
+                f"Apply this rule to each example below. For each, reply with either 'LABEL' or 'NO LABEL'.\n"
+                f"Examples:\n{batch_text}"
+            )
+
+            response = client.models.generate_content(
+                model="gemini-2.5-flash",
+                contents=gemini_prompt
+            )
+            answer = response.text.strip() if response.text else ""
+            full_response_log.append(f"--- Batch {i//batch_size + 1} ---\n{answer}")
+
+            batch_results = []
+            for line in answer.splitlines():
+                if 'LABEL' in line.upper():
+                    label = 1 if 'LABEL' in line.upper() and 'NO LABEL' not in line.upper() else 0
+                    batch_results.append(label)
+            
+            # Ensure we have a result for every item in the batch
+            batch_results = (batch_results + [0]*len(batch))[:len(batch)]
+            all_results.extend(batch_results)
+
+        labeled = list(zip(all_data, all_results))
 
         return jsonify({
             'examples': labeled,
-            'raw_response': answer
+            'raw_response': "\n\n".join(full_response_log)
         })
     except Exception as e:
         return jsonify({'error': f'Gemini labeling failed: {str(e)}'}), 500
